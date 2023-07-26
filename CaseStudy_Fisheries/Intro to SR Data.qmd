@@ -2,6 +2,8 @@
 title: "Getting Familiar with Stock-Recruit Data"
 format: html
 editor: visual
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ## Welcome to Salmon Forecasting!
@@ -14,12 +16,11 @@ Let's do a couple of easy exercises to get ourselves acquainted with salmon data
 
 The Ricker model is a commonly used discrete stock-recruitment model used for Pacific Salmon. It includes two parameters ($\alpha$ and $\beta$) that capture the population's growth rate and carrying capacity. Fun fact: DFO's Pacific Biological Station in Nanaimo, BC, has a road looping through it called "Ricker's Curve", named after Bill Ricker, who worked at the station.
 
-$$
-R_i = \alpha S_i e^{-\beta S_i} 
-$$
+$$R_i = \alpha S_i e^{-\beta S_i} $$
 
 This equation is often linearized to the following form, for quick parameter estimation:
 
+<<<<<<< Updated upstream
 $$
 ln(R_i/S_i) = ln(\alpha) - \beta S_i 
 $$
@@ -27,6 +28,13 @@ $$
 It's also common to parameterize this model using $S_{max} = 1/\beta$, which is the number of spawners that produces the maximum number of recruits (the peak of the curve,) since it is more intuitive to put priors around. $$
 ln(R_i/S_i) = ln(\alpha) - S_i/S_{max}
 $$
+=======
+$$\ln(R_i/S_i) = \log(\alpha) - \beta S_i $$
+
+
+It's also common to parameterize this model using $S_{max} = 1/\beta$, which is the number of spawners that produces the maximum number of recruits (the peak of the curve,) since it is more intuitive to put priors around. 
+$$\ln(R_i/S_i) = \log(\alpha) - S_i/S_{max}$$
+>>>>>>> Stashed changes
 
 ```{r}
 #| label: load-packages
@@ -47,7 +55,8 @@ Let's take a look at Ricker model in action
 #| fig-cap: |
 #|  Simulated Ricker curve data
 
-SimData <- Sim_Ricker_SR_Data(leng=50, age=4, Sig_Ricker = 0.15, true_a = 4, true_b=1/100000, hr_min = 0.2, hr_max = 0.8, lnorm_corr = FALSE)
+
+SimData <- Sim_Ricker_SR_Data(leng=50, age=4, Sig_Ricker = 0.15, true_a = rnorm(1, 5, 2), true_b=1/100000, hr_min = 0.2, hr_max = 0.8, lnorm_corr = FALSE) # keep age=4
 
 # look at time series of spawners
 ggplot(data=SimData$DF_Out) +
@@ -68,10 +77,18 @@ Use the function "Sim_Ricker_SR_Data" found in the Functions.R file to play with
 #| label: Warm up task 1
 #| include: false
 
-#hint: You'll want to create a vector (or column in a data frame) to hold values of log(Recruits/Spawner), then model that as a function of Spawners. It will look something like this: logRPS ~ S
+# hint: You'll want to create a vector (or column in a data frame) to hold values of log(Recruits/Spawner), then model that as a function of Spawners. It will look something like this: logRPS ~ S
 
+logRS <- log10(SimData$DF_Out$R / SimData$DF_Out$S)
+fit.RS <- lm(logRS ~ S, data = SimData$DF_Out)
+summary(fit.RS)
+exp(coef(fit.RS)[1])
+log(SimData$true_a)
 
 ```
+
+If we think about the intercept, exponentiate it, then we compare it to the value of $\log(\alpha)$. According to the Ricker Model, they should be equal.
+
 
 ### **Common Reference Points Used for Salmon**
 
@@ -79,23 +96,21 @@ Reference points are used in fisheries management to glean population health and
 
 Neither of these values have straight-forward solutions when using a Ricker curve. Up until a few years ago $S_{MSY}$ was generally solved using the following approximation, which was introduced by Hilborn (1985).
 
-$$
-S_{MSY} \approx  \frac{log(\alpha)*(0.5-0.07*log(\alpha))}{\beta}
-$$ In 2016 an explicit solution was found for $S_{MSY}$ using the Lambert W function:
+$$S_{MSY} \approx  \frac{\log(\alpha)*(0.5-0.07*\log(\alpha))}{\beta}$$ 
 
-$$
-W(z)e^{W(z)}=z
-$$ Where: $$
-S_{MSY} = \frac{1-W(e^{1-log(\alpha)})}{\beta}
-$$
+In 2016 an explicit solution was found for $S_{MSY}$ using the Lambert W function:
+
+$$W(z)e^{W(z)}=z$$ Where: 
+
+$$S_{MSY} = \frac{1-W(e^{1-log(\alpha)})}{\beta}$$
 
 If you do stock-recruitment analysis you will commonly see both estimation techniques used.
 
-Once we know (or approximate) S\_{MSY} we can estimate $S_{gen}$ by numerically, solving the equation:
+Once we know (or approximate) $S_{MSY}$ we can estimate $S_{gen}$ by numerically, solving the equation:
 
-$$
-S_{MSY} = \alpha  S_{gen}  e^{-\beta S{gen}}
-$$ In the supplied code I use optim to do this.
+$$S_{MSY} = \alpha  S_{gen}  e^{-\beta S{gen}}$$ 
+
+In the supplied code I use optim to do this.
 
 ```{r}
 #| label: Ricker Curve with BMs
@@ -124,10 +139,28 @@ Open the real Fraser Sockeye data found in file "FraserSockeyeData2022.csv" and 
 #| label: Warm up task 2
 #| include: false
 
-#Hint: You can step through this yourself, or use my function GetRickerBMs() 
+# Hint: You can step through this yourself, or use my function GetRickerBMs()
 
-
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+fsd2022 <- read.csv("DataIn/FraserSockeyeData2022.csv", header = TRUE)
+fsd2022_sub <- fsd2022 %>% filter(`Pop_Name` == 'Early Stuart') %>%
+  mutate(logRS = log10(R / S))
+fit.2022 <- lm(logRS ~ S, data = fsd2022_sub)
+summary(fit.2022)
 ```
+
+
+```{r}
+# a <- exp(as.numeric(coef(fit.2022)[1]))
+out.2022 <- GetRickerBMs(SRDat = fsd2022_sub, a = NA, B = NA)
+
+out.2022$SMSY
+out.2022$Sgen
+
+mean(fsd2022_sub$S) # average spawner numbers (average from last 4 years)
+```
+
+
 
 #### Warm-up Task 3
 

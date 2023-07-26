@@ -1,6 +1,6 @@
 
 # Simulate a single stock of Ricker SR data =============================================================================================
-Sim_Ricker_SR_Data <- function( leng=20, age=4, Sig_Ricker = 0.2, true_a = 3, true_b=1/5000,
+Sim_Ricker_SR_Data <- function(leng=50, age=4, Sig_Ricker = 0.2, true_a = 3, true_b=1/5000,
                           hr_min = 0.2, hr_max = 0.8, lnorm_corr = F, autoCorr = F, rho=NA,
                           covariate = F){
 
